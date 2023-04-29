@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+*,*::before,*::after {box-sizing:border-box}
+body {
+	--sans-font:"Avenir Next", Avenir,
+		Cantarell, Roboto, "Noto Sans", "Segoe UI", Arial, sans-serif;
+	tab-size:2;
+	width:100vw;
+	height:100vh;
+	overflow:hidden;
+	margin:0;
+	box-sizing:border-box;
+	color:#eee;
+	background-color:#17171b;
+	font-family:var(--sans-font);
+}
+.container {
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	padding:0.5rem 15rem;
+	height:100vh;
+	flex-direction:column;
+}
+.container .title-container {
+	text-align:center;
+	user-select:none;
+	margin:0;
+	margin-bottom:2rem;
+	width:100%;
+}
+.container .title-container h1 {
+	font-weight:300;
+	font-size:2.3rem;
+	margin:0;
+	margin-bottom:.4rem;
+}
+.container .chats:empty + .container .title {
+	display:inline-block
+}
+.input_prompt.wrapper {
+	background-color:#40414f;
+	margin:0px;
+	padding:4px;
+	border-radius:.4rem;
+	width:100%;
+	display:flex;
+	flex-shrink:0;
+	flex-direction:row;
+	align-items:center;
+	justify-content:center;
+}
+.input_prompt.wrapper > #prompt_input {
+	color:#fff;
+	background:none;
+	border:none;
+	overflow:hidden auto;
+	font-size:1rem;
+	font-family:var(--sans-font);
+	resize:none;
+	flex-grow:1;
+	outline:none;
+	height:1.5rem;
+	max-height:15rem;
+	padding:0;
+	padding-left:8px;
+	line-height:1.5rem;
+}
+.input_prompt.wrapper > #prompt_send {margin-right:4px;}
+.input_prompt.wrapper > :is(#prompt_send,#prompt_reset) {
+	color:#fff;
+	background:#0004;
+	border:none;
+	border-radius:.4rem;
+	padding:8px;
+	font-size:1rem;
+	font-weight:normal;
+}
+.chats {
+	width:100%;
+	max-height:100%;
+	display:flex;
+	flex-direction:column;
+	overflow:hidden scroll;
+	margin-bottom:-.8rem;
+}
+.chats > .chat {
+	margin:4px 0px;
+	padding:8px;
+	width:inherit;
+	border-radius:.4rem;
+	border:none;
+	color:#fff;
+	font-family:inherit;
+	outline:none;
+	white-space:pre-wrap;
+	line-height:1.5;
+	overflow-wrap:break-word;
+	font-size:.9rem;
+	flex-grow:1;
+	background:#2e2e30;
+}
+.chats > .chat > pre {
+	background:#fff3;
+	padding:.5rem;
+	border-radius:.4rem;
+}
+.chats > .chat.user {background:#9f95}
+.chats > .chat.error {background:#691313}
+.chats > .chat.ai {background:#2e2e30}
+@media (max-width:800px){
+	.container {
+		padding:.5rem .5rem;
+	}
+}
+</style>
+</head>
+<body>
+<main class="container">
+	<div class="title-container" title="ChatGPT">
+		<h1 class="title">GPT Lite</h1>
+		<span class="desc">Lightweight ChatGPT web client, uses BAI Chat as backend</span>
+		<!--br>
+		By @mdp43140, inspired by <a href="https://github.com/aandrew-me/tgpt">aandrew-me/tgpt</a>
+		<br>
+		Advantages:
+		<ul>
+			<li>Lightweight</li>
+			<li>Simple</li>
+			<li>Fast</li>
+		</ul>
+		<br>
+		Disadvantages:
+		<ul>
+			<li>Can't show code blocks</li>
+			<li>Doesn't save chat histories</li>
+			<li>Doesn't keep contexts</li>
+		</ul-->
+	</div>
+	<div class="chats"></div>
+	<form class="input_prompt wrapper">
+		<textarea id="prompt_input" placeholder="Ask something..."></textarea>
+		<button type="submit" id="prompt_send">Send</button>
+		<button id="prompt_reset">Reset</button>
+	</form>
+</main>
+<script>
+let opts = {
+	currentID:'',
+	isDebug:false,
+	lastMessages:[],
+};
+(()=>{
+const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
+const container = document.querySelector('.container');
+const chat_box = container.querySelector('.chats');
+const prompt_wrapper = document.querySelector('.container > .input_prompt.wrapper');
+const prompt_input = prompt_wrapper.querySelector('#prompt_input');
+const prompt_send = prompt_wrapper.querySelector('#prompt_send');
+const prompt_reset = prompt_wrapper.querySelector('#prompt_reset');
+const askGPT = async (prompt) => {
+	if (!prompt || prompt == "") return;
+	if (opts.isDebug) return "Hello there, I am BAI Chat, based on ChatGPT 3.5! is there anything i can help?"
+	let resolve,fail;
+	const promise = new Promise((r,f) => {resolve = r;fail = f});
+	const respond = (response) => {resolve(response)};
+	fetch('https://chatbot.theb.ai/api/chat-process',{
+		method:'POST',
+		headers:{
+			'Host':"chatbot.theb.ai",
+			"Accept":"text/plain",
+			"Accept-Language":"en;q=0.5",
+			"Accept-Encoding":"identity",
+			'Content-Type':'application/json',
+			'Content-Length':prompt.length,
+			'Origin':"https://chatbot.theb.ai",
+			'Referer':"https://chatbot.theb.ai",
+			'Cookie':"__cf_bm=yeetus321gooo",
+		},
+		body:JSON.stringify({
+			prompt,
+			options:{"parentMessageId":opts.currentID}
+		})
+	}).then(response => {
+		opts.lastResponse = response.clone(); // debugging
+		return response.clone().text().then(text => {
+			let jsonData = JSON.parse(`[${text.replace(/\n/g,',')}]`);
+			console.log("Answers:",jsonData); // debugging
+			jsonData = jsonData[jsonData.length - 1]; // grab last message
+			opts.lastAnswer = jsonData; // debugging
+			if (jsonData.id){
+				opts.currentID = jsonData.id;
+				storeOpts()
+			};
+			opts.lastMessages.push({text:jsonData.text,isUser:false});
+			storeOpts();
+			console.log("ID:",opts.currentID); // debugging
+			respond(jsonData.text);
+		});
+	}).catch(e => {
+		console.error('[LiteGPT] Failed to fetch answer!',e)
+		resolve('');
+		fail();
+	});
+	return promise;
+};
+const sendChat = async (prompt) => {
+	if (!prompt) prompt = prompt_input.value;
+	if (!prompt || prompt == "") return;
+	prompt_input.style.height = '1.5rem';
+	prompt_input.value = "";
+
+	createChatBox(prompt,true);// create user chat
+	opts.lastMessages.push({text:prompt,isUser:true}); // also store it
+	storeOpts(); // and dont forget to update it
+	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
+	const aiAnswer = await askGPT(prompt); // submit the user query
+	if (aiAnswer){// if answer exist
+		aiChat.innerHTML = formatText(aiAnswer); // put AI answer
+	} else {
+		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
+		aiChat.innerText = "Failed to fetch answer!";
+	}
+}
+const clearChat = () => {
+	opts.currentID = "";
+	chat_box.innerHTML = "";
+	opts.lastMessages = [];
+}
+const createChatBox = (text,isUser) => {
+	const chatBubble = elt("div",{class:"chat "+(isUser ? "user":"ai")});
+	chat_box.append(chatBubble);
+	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:'smooth'});
+	chatBubble.innerHTML = formatText(text)
+	return chatBubble;
+}
+
+// dependency
+const formatText = (text) => {
+  return text.replace(/```([\s\S]*?)```/g,"<pre>$1</pre>").replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
+}
+const storeOpts = () => {
+	localStorage.setItem("baicgpt",JSON.stringify(opts))
+}
+
+window.onload = () => {
+	prompt_input.onkeypress = e => {
+		if (e.which == 13 && !e.shiftKey){
+			e.preventDefault();
+			sendChat();
+		}
+	}
+	prompt_input.onkeyup = e => {
+		if (e.which == 8 || e.which == 13) prompt_input.style.height = (prompt_input.value.split('\n').length * 1.5)+'rem';
+	}
+	prompt_send.onclick = e => {
+		e.preventDefault();
+		sendChat();
+	}
+	prompt_reset.onclick = e => {
+		e.preventDefault();
+		clearChat();
+	}
+	let storedOpts = localStorage.getItem("baicgpt");
+	if (storedOpts){
+		storedOpts = JSON.parse(storedOpts);
+		opts = storedOpts;
+		console.log("Detected ID from localStorage",opts.currentID);
+		for (i of opts.lastMessages) createChatBox(i.text,i.isUser)
+	}
+	storeOpts();
+};
+})();
+</script>
+</body>
+</html>
