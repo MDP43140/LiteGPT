@@ -29,27 +29,50 @@ body {
 	display:flex;
 	align-items:center;
 	justify-content:center;
-	padding:0.5rem 15rem;
+	padding:1vh 15vw;
 	height:100vh;
 	flex-direction:column;
 }
-.container .title-container {
+.container button {
+	background:#2f3d44;
+	color:#fff;
+	border:none;
+	border-top:1px solid #3e4b51;
+	border-radius:.4rem;
+	outline:none;
+	margin:4px;
+	padding:calc(.5rem - 1px) 1rem .5rem 1rem;
+	font-weight:normal;
+	font-size:.9em;
+	user-select:none;
+	transition:0.2s;
+}
+.container button:hover {background:#3f4e55;}
+.container button:active {transition:0.1s;background:#425056;border-top:1px solid #2f3d44}
+.container button:disabled {
+	color:#fffa;
+	opacity:.7;
+	border:none;
+	pointer-events:none;
+}
+.container > .title-container {
 	text-align:center;
 	user-select:none;
+	pointer-events:none;
 	margin:0;
-	margin-bottom:2rem;
+	margin-bottom:4vh;
 	width:100%;
 }
-.container .title-container h1 {
+.container > .title-container h1 {
 	font-weight:300;
 	font-size:2.3rem;
 	margin:0;
-	margin-bottom:.4rem;
+	margin-bottom:1vh;
 }
-.container .chats:empty + .container .title {
-	display:inline-block
+.chats:empty + .title-container {
+	background:#f00!important;
 }
-.input_prompt.wrapper {
+.container > .input_prompt.wrapper {
 	background-color:#40414f;
 	margin:0px;
 	padding:4px;
@@ -60,8 +83,9 @@ body {
 	flex-direction:row;
 	align-items:center;
 	justify-content:center;
+	user-select:none;
 }
-.input_prompt.wrapper > #prompt_input {
+.container > .input_prompt.wrapper > #prompt_input {
 	color:#fff;
 	background:none;
 	border:none;
@@ -76,52 +100,51 @@ body {
 	padding:0;
 	padding-left:8px;
 	line-height:1.5rem;
+	user-select:text;
 }
-.input_prompt.wrapper > #prompt_send {margin-right:4px;}
-.input_prompt.wrapper > :is(#prompt_send,#prompt_reset) {
-	color:#fff;
-	background:#0004;
-	border:none;
-	border-radius:.4rem;
-	padding:8px;
-	font-size:1rem;
-	font-weight:normal;
-}
-.chats {
+.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset){background:#0006;margin:0px}
+.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset):hover {background:#0003}
+.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset):active {background:#fff2}
+.container > .input_prompt.wrapper > #prompt_send {margin-right:4px}
+.container > .chats {
 	width:100%;
 	max-height:100%;
-	display:flex;
-	flex-direction:column;
 	overflow:hidden scroll;
 	margin-bottom:-.8rem;
+	padding-bottom:1rem;
 }
-.chats > .chat {
+.container > .chats > .chat {
 	margin:4px 0px;
 	padding:8px;
 	width:inherit;
-	border-radius:.4rem;
-	border:none;
 	color:#fff;
-	font-family:inherit;
+	border:none;
 	outline:none;
+	border-radius:.4rem;
+	font-family:inherit;
 	white-space:pre-wrap;
-	line-height:1.5;
 	overflow-wrap:break-word;
 	font-size:.9rem;
+	line-height:1.5;
 	flex-grow:1;
 }
-.chats > .chat > pre {
+.container > .chats > .chat > pre {
 	background:#fff3;
+	margin:1rem 0px;
 	padding:.5rem;
 	border-radius:.4rem;
+	white-space:pre-wrap;
+	overflow-wrap:break-word;
 }
-.chats > .chat.user {background:#9f95}
-.chats > .chat.error {background:#691313}
-.chats > .chat.ai {background:#2e2e30}
-@media (max-width:800px){
-	.container {
-		padding:.5rem .5rem;
-	}
+.container > .chats > .chat.user {background:#9f95}
+.container > .chats > .chat.error {background:#691313}
+.container > .chats > .chat.ai {background:#2e2e30}
+@media (max-width:640px){
+	.container {padding:1vh}
+	.container > .chats:not(:empty){flex-grow:1}
+}
+@media (max-height:400px){
+	.container > .title-container {display:none} /* temporary workaround for smol display, because the css :empty style didn't work */
 }
 </style>
 </head>
@@ -130,22 +153,6 @@ body {
 	<div class="title-container" title="ChatGPT">
 		<h1 class="title">GPT Lite</h1>
 		<span class="desc">Lightweight ChatGPT web client, uses BAI Chat as backend</span>
-		<!--br>
-		By @mdp43140, inspired by <a href="https://github.com/aandrew-me/tgpt">aandrew-me/tgpt</a>
-		<br>
-		Advantages:
-		<ul>
-			<li>Lightweight</li>
-			<li>Simple</li>
-			<li>Fast</li>
-		</ul>
-		<br>
-		Disadvantages:
-		<ul>
-			<li>Can't show code blocks</li>
-			<li>Doesn't save chat histories</li>
-			<li>Doesn't keep contexts</li>
-		</ul-->
 	</div>
 	<div class="chats"></div>
 	<form class="input_prompt wrapper">
@@ -170,7 +177,10 @@ const prompt_send = prompt_wrapper.querySelector('#prompt_send');
 const prompt_reset = prompt_wrapper.querySelector('#prompt_reset');
 const askGPT = async (prompt) => {
 	if (!prompt || prompt == "") return;
-	if (opts.isDebug) return "Hello there, I am BAI Chat, based on ChatGPT 3.5! is there anything i can help?"
+	if (opts.isDebug){
+		await sleep(1e3);
+		return "Hello there, I am BAI Chat, based on ChatGPT 3.5! is there anything i can help?";
+	}
 	let resolve,fail;
 	const promise = new Promise((r,f) => {resolve = r;fail = f});
 	const respond = (response) => {resolve(response)};
@@ -216,12 +226,13 @@ const askGPT = async (prompt) => {
 };
 const sendChat = async (prompt) => {
 	if (!prompt) prompt = prompt_input.value;
-	if (!prompt || prompt == "") return;
+	if (!prompt || prompt == "" || prompt_send.disabled) return;
+	prompt_send.disabled = true;
 	prompt_input.style.height = '1.5rem';
 	prompt_input.value = "";
 
 	createChatBox(prompt,true);// create user chat
-	opts.lastMessages.push({text:prompt,isUser:true}); // also store it
+	if (!opts.isDebug) opts.lastMessages.push({text:prompt,isUser:true}); // also store it
 	storeOpts(); // and dont forget to update it
 	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
 	const aiAnswer = await askGPT(prompt); // submit the user query
@@ -231,6 +242,7 @@ const sendChat = async (prompt) => {
 		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
 		aiChat.innerText = "Failed to fetch answer!";
 	}
+	prompt_send.disabled = false;
 }
 const clearChat = () => {
 	opts.currentID = "";
@@ -247,15 +259,23 @@ const createChatBox = (text,isUser) => {
 
 // dependency
 const formatText = (text) => {
-  return text.replace(/```([\s\S]*?)```/g,"<pre>$1</pre>").replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
+  const htmlCharMap = {
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    "'":'&quot;',
+    '"':'&#039;'
+  };
+  return text.replace(/[\&\<\>\"\']/g,m => map[m]).replace(/```([\s\S]*?)```/g,"<pre>$1</pre>").replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
 }
 const storeOpts = () => {
 	localStorage.setItem("baicgpt",JSON.stringify(opts))
 }
+const sleep = m => new Promise(r=>setTimeout(r,m))
 
-window.onload = () => {
+window.addEventListener("load",() => {
 	prompt_input.onkeypress = e => {
-		if (e.which == 13 && !e.shiftKey){
+		if (e.which == 13 && e.shiftKey){
 			e.preventDefault();
 			sendChat();
 		}
@@ -266,6 +286,7 @@ window.onload = () => {
 	prompt_send.onclick = e => {
 		e.preventDefault();
 		sendChat();
+		prompt_input.focus();
 	}
 	prompt_reset.onclick = e => {
 		e.preventDefault();
@@ -274,12 +295,12 @@ window.onload = () => {
 	let storedOpts = localStorage.getItem("baicgpt");
 	if (storedOpts){
 		storedOpts = JSON.parse(storedOpts);
-		opts = storedOpts;
-		console.log("Detected ID from localStorage",opts.currentID);
+		opts.currentID = storedOpts.currentID;
+		opts.lastMessages = storedOpts.lastMessages;
 		for (i of opts.lastMessages) createChatBox(i.text,i.isUser)
 	}
 	storeOpts();
-};
+},{once:true});
 })();
 </script>
 </body>
