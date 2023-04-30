@@ -184,14 +184,13 @@ const askGPT = async (prompt) => {
 	if (!prompt || prompt == "") return;
 	if (opts.simulateFetch){
 		await sleep(1e3);
-		var simulateStream = async function*(chunks){
+		const simulateStream = async function*(chunks){
 			for (const c of chunks){
 				yield Promise.resolve(new TextEncoder().encode(c));
+				await new Promise(r => setTimeout(r,120)); // Delay between chunks
 			}
 		}
-		var stream = simulateStream([
-			'{"text":"Hello, I am BAI Chat, based on ChatGPT 3.5! is there anything i can assist today?"}',
-		]);
+		const stream = simulateStream(genAILikeResponse("Hello, I am BAI Chat, based on ChatGPT 3.5! is there anything i can assist today?").map(s => '{"text":"'+s+'"}'));
 		stream.read = stream.next;
 		return stream;
 	}
@@ -316,6 +315,18 @@ const formatText = (text) => {
 						 .replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
 }
 const sleep = m => new Promise(r=>setTimeout(r,m))
+const genAILikeResponse = str => {
+  str = str.split(" ");
+  const result = [];
+  let currStr = "";
+  for (let i=0,l=str.length;i < l;i++){
+    currStr += str[i];
+    result.push(currStr);
+    currStr += " ";
+  }
+  return result;
+}
+
 
 window.addEventListener("load",() => {
 	prompt_input.onkeypress = e => {
