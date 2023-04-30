@@ -102,10 +102,10 @@ body {
 	line-height:1.5rem;
 	user-select:text;
 }
-.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset){background:#0006;margin:0px}
-.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset):hover {background:#0003}
-.container > .input_prompt.wrapper > :is(#prompt_send,#prompt_reset):active {background:#fff2}
-.container > .input_prompt.wrapper > #prompt_send {margin-right:4px}
+.container > .input_prompt.wrapper > :is(#prompt_sendStopgen,#prompt_reset){background:#0006;margin:0px}
+.container > .input_prompt.wrapper > :is(#prompt_sendStopgen,#prompt_reset):hover {background:#0003}
+.container > .input_prompt.wrapper > :is(#prompt_sendStopgen,#prompt_reset):active {background:#fff2}
+.container > .input_prompt.wrapper > #prompt_sendStopgen {margin-right:4px}
 .container > .chats {
 	width:100%;
 	max-height:100%;
@@ -140,7 +140,7 @@ body {
 .container > .chats > .chat.error {background:#691313}
 .container > .chats > .chat.ai {background:#2e2e30}
 .container > .chats > .chat.ai.typing::after {
-	content:'X';
+	content:"X";
 	color:#0000;
 	background-color:#fff;
 }
@@ -162,78 +162,93 @@ body {
 	<div class="chats"></div>
 	<form class="input_prompt wrapper">
 		<textarea id="prompt_input" placeholder="Ask something..."></textarea>
-		<button type="submit" id="prompt_send">Send</button>
+		<button type="submit" id="prompt_sendStopgen">Send</button>
 		<button id="prompt_reset">Reset</button>
 	</form>
 </main>
 <script>
-let opts = {
+let opts;
+(()=>{
+"use strict";
+opts = {
 	currentChat:"",
+	currentID:"",
 	simulateFetch:false,
 	chats:{}
 };
-(()=>{
-'use strict';
-const container = document.querySelector('.container');
-const chat_box = container.querySelector('.chats');
-const prompt_wrapper = document.querySelector('.container > .input_prompt.wrapper');
-const prompt_input = prompt_wrapper.querySelector('#prompt_input');
-const prompt_send = prompt_wrapper.querySelector('#prompt_send');
-const prompt_reset = prompt_wrapper.querySelector('#prompt_reset');
-const askGPT = async (prompt) => {
-	if (!prompt || prompt == "") return;
-	if (opts.simulateFetch){
-		await sleep(1e3);
-		const simulateStream = async function*(chunks){
-			for (const c of chunks){
-				yield Promise.resolve(new TextEncoder().encode(c));
-				await new Promise(r => setTimeout(r,120)); // Delay between chunks
-			}
-		}
-		const stream = simulateStream(genAILikeResponse("Hello, I am BAI Chat, based on ChatGPT 3.5! is there anything i can assist today?").map(s => '{"text":"'+s+'"}'));
-		stream.read = stream.next;
-		return stream;
-	}
-	let resolve,fail;
-	const promise = new Promise((r,f) => {resolve = r;fail = f});
-	fetch('https://chatbot.theb.ai/api/chat-process',{
-		method:'POST',
+const container = document.querySelector(".container");
+const chat_box = container.querySelector(".chats");
+const prompt_wrapper = document.querySelector(".container > .input_prompt.wrapper");
+const prompt_input = prompt_wrapper.querySelector("#prompt_input");
+const prompt_sendStopgen = prompt_wrapper.querySelector("#prompt_sendStopgen");
+const prompt_reset = prompt_wrapper.querySelector("#prompt_reset");
+let stopGenerating;
+
+const askGPT = (() => {
+	const reqConf = {
+		method:"POST",
 		headers:{
-			'Host':"chatbot.theb.ai",
+			"Host":"chatbot.theb.ai",
 			"Accept":"text/plain",
 			"Accept-Language":"en;q=0.5",
 			"Accept-Encoding":"identity",
-			'Content-Type':'application/json',
-			'Content-Length':prompt.length,
-			'Origin':"https://chatbot.theb.ai",
-			'Referer':"https://chatbot.theb.ai",
-			'Cookie':"__cf_bm=yeetus321gooo",
+			"Content-Type":"application/json",
+			"Origin":"https://chatbot.theb.ai",
+			"Referer":"https://chatbot.theb.ai",
+			"Cookie":"__cf_bm=yeetus321gooo",
 		},
-		body:JSON.stringify({
+	}
+//for testing purpose
+	const simulateStream = (() => {
+		const encoder = new TextEncoder;
+		return async function*(chunks){
+			for (let c of chunks){
+				yield Promise.resolve(encoder.encode(c));
+				await sleep(80);
+			}
+		}
+	})();
+	return async (prompt) => {
+		if (!prompt || prompt === "") return;
+		stopGenerating = new AbortController;
+		if (opts.simulateFetch){
+			const stream = simulateStream(genAILikeResponse("Hello there, I am BAI Chat, which is based on ChatGPT 3.5! is there anything i can help with today?").map(s => '{"text":"'+s+'"}'));
+			stream.read = stream.next;
+			await sleep(1e3);
+			return stream;
+		}
+		let resolve,fail;
+		const promise = new Promise((r,f) => {resolve = r;fail = f});
+		reqConf.headers["Content-Length"] = prompt.length;
+		reqConf.body = JSON.stringify({
 			prompt,
 			options:{"parentMessageId":opts.chats[opts.currentChat].id}
-		})
-	}).then(r => resolve(r.body.getReader()) ).catch(e => {
-		console.error('[LiteGPT] Failed to fetch answer!',e)
-		resolve();
-		fail();
-	});
-	return promise;
-};
+		});
+		reqConf.signal = stopGenerating.signal;
+		fetch("https://chatbot.theb.ai/api/chat-process",reqConf)
+			.then(r => resolve(r.body.getReader()))
+			.catch(e => {
+				console.error("[LiteGPT] Failed to fetch answer!",e)
+				resolve();
+				fail();
+			});
+		return promise;
+	};
+})();
 const sendChat = async (prompt) => {
 //UI-related thingy...
 	if (!prompt) prompt = prompt_input.value;
-	if (!prompt || prompt == "" || prompt_send.disabled) return;
-	prompt_send.disabled = true;
-	prompt_input.style.height = '1.5rem';
+	if (!prompt || prompt === "" || stopGenerating) return;
+	prompt_sendStopgen.innerText = "Stop";
+	prompt_input.style.height = "1.5rem";
 	prompt_input.value = "";
 
 //Storing stuff and updating UI...
 	createChatBox(prompt,true);// create user chat
-	if (opts.currentChat === '') opts.currentChat = prompt // if current chat not set, set 1st chat as title for current chat
+	if (opts.currentChat === "") opts.currentChat = prompt // if current chat not set, set 1st chat as title for current chat
 	if (!opts.chats[opts.currentChat]) opts.chats[opts.currentChat] = { // make new chat
 		chat:[],
-		id:''
+		id:""
 	};
 	if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
 	storeOpts(); // and dont forget to update it
@@ -241,21 +256,24 @@ const sendChat = async (prompt) => {
 	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
 	const aiResponse = await askGPT(prompt); // submit the user query
 	if (aiResponse){// if returned readable response stream
-		aiChat.className += ' typing';
+		aiChat.className += " typing";
 		const textDecoder = new TextDecoder;
 		let lastData;
 		const processStream = ({done,value}) => {
-			if (done){
-				if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
-				if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
-				storeOpts();
+			if (done || stopGenerating.signal.aborted){
+				if (lastData){
+					if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
+					if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
+					storeOpts();
+				}
 				aiChat.className = aiChat.className.replace(/typing/g,"");
-				prompt_send.disabled = false;
+				prompt_sendStopgen.innerText = "Send";
+				stopGenerating = null;
 				return;
 			}
 			value = textDecoder.decode(value).split("\n"); // decode Uint8Array into string, and split the newlines to prevent JSON.parse errors.
 			for (let i of value){
-				if (i === '') continue;
+				if (i === "") continue;
 				try {
 					i = JSON.parse(i);
 				} catch(e){
@@ -264,6 +282,7 @@ const sendChat = async (prompt) => {
 				}
 				lastData = i;
 				aiChat.innerHTML = formatText(i.text); // put AI answer
+				if (chat_box.scrollTop >= chat_box.scrollTopMax - 24) chat_box.scroll({top:chat_box.scrollHeight,left:0});
 			}
 			// Do something with each chunk of data
 			aiResponse.read().then(processStream); // Continue reading the next chunk of data
@@ -272,11 +291,12 @@ const sendChat = async (prompt) => {
 	} else {
 		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
 		aiChat.innerText = "Failed to fetch answer!";
-		prompt_send.disabled = false;
+		prompt_sendStopgen.innerText = "Send";
+		stopGenerating = null;
 	}
 }
 const clearChat = () => {
-	opts.currentChat = '';
+	opts.currentChat = "";
 	opts.chats = {};
 	chat_box.innerHTML = "";
 	storeOpts()
@@ -285,13 +305,29 @@ const createChatBox = (text,isUser) => {
 	const chatBubble = elt("div",{class:"chat "+(isUser ? "user":"ai")});
 	chat_box.append(chatBubble);
 	chatBubble.innerHTML = formatText(text);
-	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:'smooth'});
+	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
 	return chatBubble;
 }
 const loadChat = () => {
-	if (opts.currentChat !== '')
+	if (opts.currentChat !== "")
 		for (let j of opts.chats[opts.currentChat].chat)
 			createChatBox(j.text,j.isUser);
+}
+window.loadOpts = () => {
+	let storedOpts = localStorage.getItem("baicgpt");
+	if (storedOpts){
+		storedOpts = JSON.parse(storedOpts);
+		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
+		if (typeof storedOpts.lastMessages === "object" && typeof storedOpts.lastMessages[0] !== "undefined"){ // compatibility (upgrade old format to new ones)
+			opts.currentChat = storedOpts.lastMessages[0].text; // set first user prompt as current chat title
+			opts.chats[opts.currentChat] = { // define an chats array (stores lists of chats identified by first chat)
+				id:storedOpts.currentID,
+				chat:storedOpts.lastMessages, // move old chat here
+			};
+		} else if (storedOpts.chats){
+			opts.chats = storedOpts.chats;
+		}
+	}
 }
 window.storeOpts = () => {
 	localStorage.setItem("baicgpt",JSON.stringify(opts))
@@ -301,11 +337,11 @@ window.storeOpts = () => {
 const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
 const formatText = (text) => {
   const htmlCharMap = {
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    "'":'&#039;',
-    '"':'&quot;'
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    "'":"&#039;",
+    '"':"&quot;"
   };
   return text.replace(/[\&\<\>\"\']/g,m => htmlCharMap[m])
 						 .replace(/```([\s\S]*?)```/g,"<pre>$1</pre>")
@@ -327,38 +363,31 @@ const genAILikeResponse = str => {
 
 window.addEventListener("load",() => {
 	prompt_input.onkeypress = e => {
-		if (e.which == 13 && e.shiftKey){
+		if (e.which === 13 && e.shiftKey){
 			e.preventDefault();
 			sendChat();
 		}
 	}
 	prompt_input.onkeyup = e => {
-		if (e.which == 8 || e.which == 13) prompt_input.style.height = (prompt_input.value.split('\n').length * 1.5)+'rem';
+		if (e.which === 8 || e.which === 13) prompt_input.style.height = (prompt_input.value.split("\n").length * 1.5)+"rem";
 	}
-	prompt_send.onclick = e => {
+	prompt_sendStopgen.onclick = e => {
 		e.preventDefault();
-		sendChat();
+		if (stopGenerating){
+			stopGenerating.abort();
+			prompt_sendStopgen.innerText = "Send";
+		} else {
+			sendChat();
+			prompt_sendStopgen.innerText = "Stop";
+		}
 		prompt_input.focus();
 	}
 	prompt_reset.onclick = e => {
 		e.preventDefault();
 		clearChat();
 	}
-	let storedOpts = localStorage.getItem("baicgpt");
-	if (storedOpts){
-		storedOpts = JSON.parse(storedOpts);
-		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
-		if (typeof storedOpts.lastMessages === 'object' && typeof storedOpts.lastMessages[0] !== 'undefined'){ // compatibility (upgrade old format to new ones)
-			opts.currentChat = storedOpts.lastMessages[0].text; // set first user prompt as current chat title
-			opts.chats[opts.currentChat] = { // define an chats array (stores lists of chats identified by first chat)
-				id:storedOpts.currentID,
-				chat:storedOpts.lastMessages, // move old chat here
-			};
-		} else if (storedOpts.chats){
-			opts.chats = storedOpts.chats;
-		}
-	}
-	loadChat()
+	loadOpts();
+	loadChat();
 	storeOpts();
 },{once:true});
 })();
