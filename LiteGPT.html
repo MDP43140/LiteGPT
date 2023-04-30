@@ -139,11 +139,10 @@ body {
 .container > .chats > .chat.user {background:#9f95}
 .container > .chats > .chat.error {background:#691313}
 .container > .chats > .chat.ai {background:#2e2e30}
-@keyframes chat_ai_waiting {0%{background-position:100% 0}to{background-position:-100% 0}}
-.container > .chats > .chat.ai.typing {
-	background:linear-gradient(to right,#2e2e30 8%,#fff3 18%,#2e2e30 33%);
-	background-size:200% 1px;
-	animation:chat_ai_waiting .5s ease-in-out infinite
+.container > .chats > .chat.ai.typing::after {
+	content:'X';
+	color:#0000;
+	background-color:#fff;
 }
 @media (max-width:640px){
 	.container {padding:1vh}
@@ -170,7 +169,7 @@ body {
 <script>
 let opts = {
 	currentChat:"",
-	isDebug:false,
+	simulateFetch:false,
 	chats:{}
 };
 (()=>{
@@ -183,13 +182,21 @@ const prompt_send = prompt_wrapper.querySelector('#prompt_send');
 const prompt_reset = prompt_wrapper.querySelector('#prompt_reset');
 const askGPT = async (prompt) => {
 	if (!prompt || prompt == "") return;
-	if (opts.isDebug){
+	if (opts.simulateFetch){
 		await sleep(1e3);
-		return "Hello there, I am BAI Chat, based on ChatGPT 3.5! is there anything i can help?";
+		var simulateStream = async function*(chunks){
+			for (const c of chunks){
+				yield Promise.resolve(new TextEncoder().encode(c));
+			}
+		}
+		var stream = simulateStream([
+			'{"text":"Hello, I am BAI Chat, based on ChatGPT 3.5! is there anything i can assist today?"}',
+		]);
+		stream.read = stream.next;
+		return stream;
 	}
 	let resolve,fail;
 	const promise = new Promise((r,f) => {resolve = r;fail = f});
-	const respond = (response) => {resolve(response)};
 	fetch('https://chatbot.theb.ai/api/chat-process',{
 		method:'POST',
 		headers:{
@@ -209,18 +216,10 @@ const askGPT = async (prompt) => {
 		})
 	}).then(response => {
 		opts.lastResponse = response.clone(); // debugging
-		return response.clone().text().then(text => {
-			let jsonData = JSON.parse(`[${text.replace(/\n/g,',')}]`); // parse the JSON data, convert it to Object
-			jsonData = jsonData[jsonData.length - 1]; // grab last message (the completed ones)
-			opts.lastAnswer = jsonData; // debugging
-			if (jsonData.id) opts.chats[opts.currentChat].id = jsonData.id; // set id
-			opts.chats[opts.currentChat].chat.push({text:jsonData.text,isUser:false}); // add response to history
-			storeOpts();
-			respond(jsonData.text);
-		});
+		return resolve(response.body.getReader());
 	}).catch(e => {
 		console.error('[LiteGPT] Failed to fetch answer!',e)
-		resolve('');
+		resolve();
 		fail();
 	});
 	return promise;
@@ -240,20 +239,45 @@ const sendChat = async (prompt) => {
 		chat:[],
 		id:''
 	};
-	if (!opts.isDebug) opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
+	if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
 	storeOpts(); // and dont forget to update it
 
 	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
-	aiChat.className += ' typing';
-	const aiAnswer = await askGPT(prompt); // submit the user query
-	if (aiAnswer){// if answer exist
-		aiChat.className = aiChat.className.replace(/typing/g,"");
-		aiChat.innerHTML = formatText(aiAnswer); // put AI answer
+	const aiResponse = await askGPT(prompt); // submit the user query
+	if (aiResponse){// if returned readable response stream
+		aiChat.className += ' typing';
+		const textDecoder = new TextDecoder;
+		let lastData;
+		const processStream = ({done,value}) => {
+			if (done){
+				if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
+				if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
+				storeOpts();
+				aiChat.className = aiChat.className.replace(/typing/g,"");
+				prompt_send.disabled = false;
+				return;
+			}
+			value = textDecoder.decode(value).split("\n"); // decode Uint8Array into string, and split the newlines to prevent JSON.parse errors.
+			for (let i of value){
+				if (i === '') continue;
+				try {
+					i = JSON.parse(i);
+				} catch(e){
+					console.error("[JSON.parse] Unable to parse the responses: ",e,". The JSON data in question: ",value)
+					continue
+				}
+				lastData = i;
+				aiChat.innerHTML = formatText(i.text); // put AI answer
+			}
+			// Do something with each chunk of data
+			aiResponse.read().then(processStream); // Continue reading the next chunk of data
+		};
+		aiResponse.read().then(processStream);
 	} else {
 		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
 		aiChat.innerText = "Failed to fetch answer!";
+		prompt_send.disabled = false;
 	}
-	prompt_send.disabled = false;
 }
 const clearChat = () => {
 	opts.currentChat = '';
