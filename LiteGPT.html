@@ -213,10 +213,7 @@ const askGPT = async (prompt) => {
 			prompt,
 			options:{"parentMessageId":opts.chats[opts.currentChat].id}
 		})
-	}).then(response => {
-		opts.lastResponse = response.clone(); // debugging
-		return resolve(response.body.getReader());
-	}).catch(e => {
+	}).then(r => resolve(r.body.getReader()) ).catch(e => {
 		console.error('[LiteGPT] Failed to fetch answer!',e)
 		resolve();
 		fail();
