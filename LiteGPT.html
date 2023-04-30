@@ -139,6 +139,12 @@ body {
 .container > .chats > .chat.user {background:#9f95}
 .container > .chats > .chat.error {background:#691313}
 .container > .chats > .chat.ai {background:#2e2e30}
+@keyframes chat_ai_waiting {0%{background-position:100% 0}to{background-position:-100% 0}}
+.container > .chats > .chat.ai.typing {
+	background:linear-gradient(to right,#2e2e30 8%,#fff3 18%,#2e2e30 33%);
+	background-size:200% 1px;
+	animation:chat_ai_waiting .5s ease-in-out infinite
+}
 @media (max-width:640px){
 	.container {padding:1vh}
 	.container > .chats:not(:empty){flex-grow:1}
@@ -163,12 +169,12 @@ body {
 </main>
 <script>
 let opts = {
-	currentID:'',
+	currentChat:"",
 	isDebug:false,
-	lastMessages:[],
+	chats:{}
 };
 (()=>{
-const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
+'use strict';
 const container = document.querySelector('.container');
 const chat_box = container.querySelector('.chats');
 const prompt_wrapper = document.querySelector('.container > .input_prompt.wrapper');
@@ -199,22 +205,17 @@ const askGPT = async (prompt) => {
 		},
 		body:JSON.stringify({
 			prompt,
-			options:{"parentMessageId":opts.currentID}
+			options:{"parentMessageId":opts.chats[opts.currentChat].id}
 		})
 	}).then(response => {
 		opts.lastResponse = response.clone(); // debugging
 		return response.clone().text().then(text => {
-			let jsonData = JSON.parse(`[${text.replace(/\n/g,',')}]`);
-			console.log("Answers:",jsonData); // debugging
-			jsonData = jsonData[jsonData.length - 1]; // grab last message
+			let jsonData = JSON.parse(`[${text.replace(/\n/g,',')}]`); // parse the JSON data, convert it to Object
+			jsonData = jsonData[jsonData.length - 1]; // grab last message (the completed ones)
 			opts.lastAnswer = jsonData; // debugging
-			if (jsonData.id){
-				opts.currentID = jsonData.id;
-				storeOpts()
-			};
-			opts.lastMessages.push({text:jsonData.text,isUser:false});
+			if (jsonData.id) opts.chats[opts.currentChat].id = jsonData.id; // set id
+			opts.chats[opts.currentChat].chat.push({text:jsonData.text,isUser:false}); // add response to history
 			storeOpts();
-			console.log("ID:",opts.currentID); // debugging
 			respond(jsonData.text);
 		});
 	}).catch(e => {
@@ -225,18 +226,28 @@ const askGPT = async (prompt) => {
 	return promise;
 };
 const sendChat = async (prompt) => {
+//UI-related thingy...
 	if (!prompt) prompt = prompt_input.value;
 	if (!prompt || prompt == "" || prompt_send.disabled) return;
 	prompt_send.disabled = true;
 	prompt_input.style.height = '1.5rem';
 	prompt_input.value = "";
 
+//Storing stuff and updating UI...
 	createChatBox(prompt,true);// create user chat
-	if (!opts.isDebug) opts.lastMessages.push({text:prompt,isUser:true}); // also store it
+	if (opts.currentChat === '') opts.currentChat = prompt // if current chat not set, set 1st chat as title for current chat
+	if (!opts.chats[opts.currentChat]) opts.chats[opts.currentChat] = { // make new chat
+		chat:[],
+		id:''
+	};
+	if (!opts.isDebug) opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
 	storeOpts(); // and dont forget to update it
+
 	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
+	aiChat.className += ' typing';
 	const aiAnswer = await askGPT(prompt); // submit the user query
 	if (aiAnswer){// if answer exist
+		aiChat.className = aiChat.className.replace(/typing/g,"");
 		aiChat.innerHTML = formatText(aiAnswer); // put AI answer
 	} else {
 		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
@@ -245,31 +256,40 @@ const sendChat = async (prompt) => {
 	prompt_send.disabled = false;
 }
 const clearChat = () => {
-	opts.currentID = "";
+	opts.currentChat = '';
+	opts.chats = {};
 	chat_box.innerHTML = "";
-	opts.lastMessages = [];
+	storeOpts()
 }
 const createChatBox = (text,isUser) => {
 	const chatBubble = elt("div",{class:"chat "+(isUser ? "user":"ai")});
 	chat_box.append(chatBubble);
+	chatBubble.innerHTML = formatText(text);
 	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:'smooth'});
-	chatBubble.innerHTML = formatText(text)
 	return chatBubble;
+}
+const loadChat = () => {
+	if (opts.currentChat !== '')
+		for (let j of opts.chats[opts.currentChat].chat)
+			createChatBox(j.text,j.isUser);
+}
+window.storeOpts = () => {
+	localStorage.setItem("baicgpt",JSON.stringify(opts))
 }
 
 // dependency
+const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
 const formatText = (text) => {
   const htmlCharMap = {
     '&':'&amp;',
     '<':'&lt;',
     '>':'&gt;',
-    "'":'&quot;',
-    '"':'&#039;'
+    "'":'&#039;',
+    '"':'&quot;'
   };
-  return text.replace(/[\&\<\>\"\']/g,m => map[m]).replace(/```([\s\S]*?)```/g,"<pre>$1</pre>").replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
-}
-const storeOpts = () => {
-	localStorage.setItem("baicgpt",JSON.stringify(opts))
+  return text.replace(/[\&\<\>\"\']/g,m => htmlCharMap[m])
+						 .replace(/```([\s\S]*?)```/g,"<pre>$1</pre>")
+						 .replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
 }
 const sleep = m => new Promise(r=>setTimeout(r,m))
 
@@ -295,10 +315,18 @@ window.addEventListener("load",() => {
 	let storedOpts = localStorage.getItem("baicgpt");
 	if (storedOpts){
 		storedOpts = JSON.parse(storedOpts);
-		opts.currentID = storedOpts.currentID;
-		opts.lastMessages = storedOpts.lastMessages;
-		for (i of opts.lastMessages) createChatBox(i.text,i.isUser)
+		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
+		if (typeof storedOpts.lastMessages === 'object' && typeof storedOpts.lastMessages[0] !== 'undefined'){ // compatibility (upgrade old format to new ones)
+			opts.currentChat = storedOpts.lastMessages[0].text; // set first user prompt as current chat title
+			opts.chats[opts.currentChat] = { // define an chats array (stores lists of chats identified by first chat)
+				id:storedOpts.currentID,
+				chat:storedOpts.lastMessages, // move old chat here
+			};
+		} else if (storedOpts.chats){
+			opts.chats = storedOpts.chats;
+		}
 	}
+	loadChat()
 	storeOpts();
 },{once:true});
 })();
