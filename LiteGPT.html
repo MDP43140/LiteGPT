@@ -320,15 +320,7 @@ window.loadOpts = () => {
 	if (storedOpts){
 		storedOpts = JSON.parse(storedOpts);
 		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
-		if (typeof storedOpts.lastMessages === "object" && typeof storedOpts.lastMessages[0] !== "undefined"){ // compatibility (upgrade old format to new ones)
-			opts.currentChat = storedOpts.lastMessages[0].text; // set first user prompt as current chat title
-			opts.chats[opts.currentChat] = { // define an chats array (stores lists of chats identified by first chat)
-				id:storedOpts.currentID,
-				chat:storedOpts.lastMessages, // move old chat here
-			};
-		} else if (storedOpts.chats){
-			opts.chats = storedOpts.chats;
-		}
+		opts.chats = storedOpts.chats;
 	}
 }
 window.storeOpts = () => {
