@@ -176,6 +176,7 @@ opts = {
 	currentChat:"",
 	currentID:"",
 	simulateFetch:false,
+	messageLimit:30,
 	chats:{}
 };
 const container = document.querySelector(".container");
@@ -261,7 +262,10 @@ const sendChat = async (prompt) => {
 		chat:[],
 		id:""
 	};
-	if (!opts.simulateFetch) opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
+	if (!opts.simulateFetch){
+		opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
+		while (opts.messageLimit && (opts.chats[opts.currentChat].chat.length > opts.messageLimit || !opts.chats[opts.currentChat].chat[0].isUser)) opts.chats[opts.currentChat].chat.shift(); // but don't store too much
+	}
 	storeOpts(); // and dont forget to update it
 
 	const aiChat = createChatBox("...",false); // create ai chat (fetching state)
