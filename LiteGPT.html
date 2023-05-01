@@ -214,7 +214,16 @@ const askGPT = (() => {
 		if (!prompt || prompt === "") return;
 		stopGenerating = new AbortController;
 		if (opts.simulateFetch){
-			const stream = simulateStream(genAILikeResponse("Hello there, I am BAI Chat, which is based on ChatGPT 3.5! is there anything i can help with today?").map(s => '{"text":"'+s+'"}'));
+			const stream = simulateStream(genAILikeResponse([
+				"Hello there! I am BAI Chat, which is based on ChatGPT 3.5! is there anything i can help with today?",
+				"Greetings! My name is BAI Chat, based on ChatGPT 3.5! What can I do for you?",
+				"Hello! I am BAI Chat, which is based on ChatGPT 3.5! How can I assist you today?",
+				"Hello there, I am BAI Chat, based on ChatGPT 3.5! How may I assist you today?",
+				"Hi, I am BAI Chat, built on ChatGPT 3.5! How can I help you today?",
+				"Hi there! I am BAI Chat, which is based on ChatGPT 3.5! How can I help you today?",
+				"Welcome! My name is BAI Chat, and I'm based on ChatGPT 3.5! How may I be of assistance?",
+				"Hey there! I'm BAI Chat, based on ChatGPT 3.5! What do you need help with?",
+			][Math.round(Math.random()*7)]).map(s => '{"text":"'+s+'"}'));
 			stream.read = stream.next;
 			await sleep(1e3);
 			return stream;
@@ -307,7 +316,7 @@ const createChatBox = (text,isUser) => {
 	const chatBubble = elt("div",{class:"chat "+(isUser ? "user":"ai")});
 	chatBubble.innerHTML = formatText(text);
 	chat_box.append(chatBubble);
-	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
+	chat_box.scrollToBottom();
 	return chatBubble;
 }
 const loadChat = () => {
@@ -326,6 +335,9 @@ window.loadOpts = () => {
 window.storeOpts = () => {
 	localStorage.setItem("baicgpt",JSON.stringify(opts))
 }
+chat_box.scrollToBottom = () => {
+	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
+};
 
 // dependency
 const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
@@ -353,7 +365,14 @@ const genAILikeResponse = str => {
   }
   return result;
 }
-
+const debounce = (fn,wait) => {
+	let t;
+	return function(){
+		let self=this,args=arguments
+		clearTimeout(t)
+		t=setTimeout(()=>fn.apply(self,args),wait)
+	}
+}
 
 window.addEventListener("load",() => {
 	prompt_input.onkeypress = e => {
@@ -379,6 +398,7 @@ window.addEventListener("load",() => {
 		e.preventDefault();
 		clearChat();
 	}
+	chat_box.scrollToBottom = debounce(chat_box.scrollToBottom,100);
 	loadOpts();
 	loadChat();
 	storeOpts();
