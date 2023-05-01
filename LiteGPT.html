@@ -84,6 +84,7 @@ body {
 	align-items:center;
 	justify-content:center;
 	user-select:none;
+	z-index:0;
 }
 .container > .input_prompt.wrapper > #prompt_input {
 	color:#fff;
@@ -129,6 +130,7 @@ body {
 	flex-grow:1;
 }
 .container > .chats > .chat > pre {
+	position:relative;
 	background:#fff3;
 	margin:1rem 0px;
 	padding:.5rem;
@@ -136,6 +138,18 @@ body {
 	white-space:pre-wrap;
 	overflow-wrap:break-word;
 }
+.container > .chats > .chat > pre > button {
+	position:absolute;
+	user-select:none;
+	display:block;
+	top:.2rem;
+	right:.2rem;
+	margin:0px;
+	opacity:.7;
+}
+.container > .chats > .chat > pre > button:hover {opacity:1;background:#0004}
+.container > .chats > .chat > pre > button:active {opacity:1;background:#0006}
+.container > .chats > .chat > pre > button::after {content:'Copy'}
 .container > .chats > .chat.user {background:#9f95}
 .container > .chats > .chat.error {background:#691313}
 .container > .chats > .chat.ai {background:#2e2e30}
@@ -250,10 +264,12 @@ const askGPT = (() => {
 const sendChat = async (prompt) => {
 //UI-related thingy...
 	if (!prompt) prompt = prompt_input.value;
-	if (!prompt || prompt === "" || stopGenerating) return;
+	if (typeof prompt !== 'string' || stopGenerating) return;
+	prompt = prompt.trim();
+	prompt_input.value = "";
+	if (prompt === "") return;
 	prompt_sendStopgen.innerText = "Stop";
 	prompt_input.style.height = "1.5rem";
-	prompt_input.value = "";
 
 //Storing stuff and updating UI...
 	createChatBox(prompt,true);// create user chat
@@ -354,7 +370,7 @@ const formatText = (text) => {
     '"':"&quot;"
   };
   return text.replace(/[\&\<\>\"\']/g,m => htmlCharMap[m])
-						 .replace(/```([\s\S]*?)```/g,"<pre>$1</pre>")
+						 .replace(/```([\s\S]*?)```/g,"<pre><button onclick='navigator.clipboard.writeText(this.parentElement.textContent.trim())'></button>$1</pre>")
 						 .replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
 }
 const sleep = m => new Promise(r=>setTimeout(r,m))
