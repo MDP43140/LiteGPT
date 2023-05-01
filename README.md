@@ -4,16 +4,17 @@ Inspired by [aandrew-me/tgpt](https://github.com/aandrew-me/tgpt)
 
 Can be accessed from [here](https://mdp43140.github.io/GPTLite/LiteGPT.html)
 
-### Advantages:
+### Features:
 + Lightweight, Simple, Fast.
-+ Remembers previous context/history
++ Remembers previous context/history.
++ self-hostable, no installation required (because its written in Web languages, just open the file/site).
 
 ### Disadvantages:
-- Can't do multiple chats (yet).
+- Not as fast as tgpt (obviously its written in Web languages such as HTML,CSS,JS, and because of it, it/the browser uses lots of RAM).
+- Can't do multiple chats yet (backend code does "support" multiple chat, but its not ready yet, and there is no way to change it through GUI).
 
 # Legal Notice
-This repository uses third-party APIs and is not associated with or endorsed by the API providers. This project is intended for educational purposes only. This is just a little personal project.
-Please note the following:
+This repository uses third-party APIs for educational purposes only and is not associated with or endorsed by the API providers. This is just a little personal project.
 - Disclaimer: The APIs, services, and trademarks mentioned in this repository belong to their respective owners. This project is not claiming any right over them.
 - Responsibility: The author of this repository is not responsible for any consequences arising from the use or misuse of this repository or the content provided by the third-party APIs and any damage or losses caused by users' actions.
 - Educational Purposes Only: This repository and its content are provided strictly for educational purposes. By using the information and code provided, users acknowledge that they are using the APIs and models at their own risk and agree to comply with any applicable laws and regulations
