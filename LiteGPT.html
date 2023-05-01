@@ -159,7 +159,9 @@ body {
 		<h1 class="title">GPT Lite</h1>
 		<span class="desc">Lightweight ChatGPT web client, uses BAI Chat as backend</span>
 	</div>
-	<div class="chats"></div>
+	<div class="chats">
+		<noscript class="chat error">GPT Lite requires JavaScript to work</noscript>
+	</div>
 	<form class="input_prompt wrapper">
 		<textarea id="prompt_input" placeholder="Ask something..."></textarea>
 		<button type="submit" id="prompt_sendStopgen">Send</button>
@@ -282,7 +284,7 @@ const sendChat = async (prompt) => {
 				}
 				lastData = i;
 				aiChat.innerHTML = formatText(i.text); // put AI answer
-				if (chat_box.scrollTop >= chat_box.scrollTopMax - 24) chat_box.scroll({top:chat_box.scrollHeight,left:0});
+				if (chat_box.scrollTop >= chat_box.scrollTopMax - 64) chat_box.scroll({top:chat_box.scrollHeight,left:0});
 			}
 			// Do something with each chunk of data
 			aiResponse.read().then(processStream); // Continue reading the next chunk of data
@@ -303,8 +305,8 @@ const clearChat = () => {
 }
 const createChatBox = (text,isUser) => {
 	const chatBubble = elt("div",{class:"chat "+(isUser ? "user":"ai")});
-	chat_box.append(chatBubble);
 	chatBubble.innerHTML = formatText(text);
+	chat_box.append(chatBubble);
 	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
 	return chatBubble;
 }
@@ -378,7 +380,6 @@ window.addEventListener("load",() => {
 			prompt_sendStopgen.innerText = "Send";
 		} else {
 			sendChat();
-			prompt_sendStopgen.innerText = "Stop";
 		}
 		prompt_input.focus();
 	}
