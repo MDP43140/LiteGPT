@@ -221,8 +221,8 @@ const askGPT = (() => {
 				"Hello there, I am BAI Chat, based on ChatGPT 3.5! How may I assist you today?",
 				"Hi, I am BAI Chat, built on ChatGPT 3.5! How can I help you today?",
 				"Hi there! I am BAI Chat, which is based on ChatGPT 3.5! How can I help you today?",
-				"Welcome! My name is BAI Chat, and I'm based on ChatGPT 3.5! How may I be of assistance?",
 				"Hey there! I'm BAI Chat, based on ChatGPT 3.5! What do you need help with?",
+				"Welcome! My name is BAI Chat, and I'm based on ChatGPT 3.5! How may I be of assistance?",
 			][Math.round(Math.random()*7)]).map(s => '{"text":"'+s+'"}'));
 			stream.read = stream.next;
 			await sleep(1e3);
