@@ -342,6 +342,7 @@ const sendChat = async (prompt) => {
 	}
 }
 const resetChat = () => {
+	if (!confirm("Are you sure to erase all chat histories?")) return;
 	clearChat();
 	opts.chats = {};
 	storeOpts()
