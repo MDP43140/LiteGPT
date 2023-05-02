@@ -71,7 +71,7 @@ body {
 .chats:empty + .title-container {
 	background:#f00!important;
 }
-.chat-wrapper > .input_prompt.wrapper {
+.chat-wrapper > .chat-prompt.wrapper {
 	background-color:#40414f;
 	margin:0px;
 	padding:4px;
@@ -85,7 +85,7 @@ body {
 	user-select:none;
 	z-index:0;
 }
-.chat-wrapper > .input_prompt.wrapper > #prompt_input {
+.chat-wrapper > .chat-prompt.wrapper > #chat_input {
 	color:#fff;
 	background:none;
 	border:none;
@@ -102,9 +102,9 @@ body {
 	line-height:1.5rem;
 	user-select:text;
 }
-.chat-wrapper > .input_prompt.wrapper > #prompt_sendStopgen{background:#0006;margin:0px}
-.chat-wrapper > .input_prompt.wrapper > #prompt_sendStopgen:hover {background:#0003}
-.chat-wrapper > .input_prompt.wrapper > #prompt_sendStopgen:active {background:#fff2}
+.chat-wrapper > .chat-prompt.wrapper > #chat_sendStopgen{background:#0006;margin:0px}
+.chat-wrapper > .chat-prompt.wrapper > #chat_sendStopgen:hover {background:#0003}
+.chat-wrapper > .chat-prompt.wrapper > #chat_sendStopgen:active {background:#fff2}
 .chat-wrapper > .chats {
 	width:100%;
 	max-height:100%;
@@ -187,9 +187,9 @@ body {
 		<div class="chats">
 			<noscript class="chat error">GPT Lite requires JavaScript to work</noscript>
 		</div>
-		<form class="input_prompt wrapper">
-			<textarea id="prompt_input" placeholder="Ask something..."></textarea>
-			<button type="submit" id="prompt_sendStopgen">Send</button>
+		<form class="chat-prompt wrapper">
+			<textarea id="chat_input" placeholder="Ask something..."></textarea>
+			<button type="submit" id="chat_sendStopgen">Send</button>
 		</form>
 	</main>
 </main>
@@ -208,9 +208,9 @@ const container = document.querySelector(".container");
 const chat_wrapper = container.querySelector(".chat-wrapper");
 const chat_box = chat_wrapper.querySelector(".chats");
 const prompt_wrapper = document.querySelector(".chat-wrapper > .input_prompt.wrapper");
-const prompt_input = prompt_wrapper.querySelector("#prompt_input");
-const prompt_sendStopgen = prompt_wrapper.querySelector("#prompt_sendStopgen");
-const prompt_reset = prompt_wrapper.querySelector("#prompt_reset");
+const chat_prompt = chat_wrapper.querySelector(".chat-prompt.wrapper");
+const chat_input = chat_prompt.querySelector("#chat_input");
+const chat_sendStopgen = chat_prompt.querySelector("#chat_sendStopgen");
 let stopGenerating;
 
 const askGPT = (() => {
@@ -276,13 +276,13 @@ const askGPT = (() => {
 })();
 const sendChat = async (prompt) => {
 //UI-related thingy...
-	if (!prompt) prompt = prompt_input.value;
+	if (!prompt) prompt = chat_input.value;
 	if (typeof prompt !== 'string' || stopGenerating) return;
 	prompt = prompt.trim();
-	prompt_input.value = "";
+	chat_input.value = "";
 	if (prompt === "") return;
-	prompt_sendStopgen.innerText = "Stop";
-	prompt_input.style.height = "1.5rem";
+	chat_sendStopgen.innerText = "Stop";
+	chat_input.style.height = "1.5rem";
 
 //Storing stuff and updating UI...
 	createChatBox(prompt,true);// create user chat
@@ -313,7 +313,7 @@ const sendChat = async (prompt) => {
 					storeOpts();
 				}
 				aiChat.className = aiChat.className.replace(/typing/g,"");
-				prompt_sendStopgen.innerText = "Send";
+				chat_sendStopgen.innerText = "Send";
 				stopGenerating = null;
 				return;
 			}
@@ -337,7 +337,7 @@ const sendChat = async (prompt) => {
 	} else {
 		aiChat.className = aiChat.className.replace(/ai|user/g,"")+"error";
 		aiChat.innerText = "Failed to fetch answer!";
-		prompt_sendStopgen.innerText = "Send";
+		chat_sendStopgen.innerText = "Send";
 		stopGenerating = null;
 	}
 }
@@ -415,28 +415,28 @@ const debounce = (fn,wait) => {
 	}
 }
 const init = () => {
-	prompt_input.onkeypress = e => {
+	chat_input.onkeypress = e => {
 		if (e.which === 13 && e.shiftKey){
 			e.preventDefault();
 			sendChat();
 		}
 	}
-	prompt_input.onkeyup = e => {
-		if (e.which === 8 || e.which === 13) prompt_input.style.height = (prompt_input.value.split("\n").length * 1.5)+"rem";
+	chat_input.onkeyup = e => {
+		if (e.which === 8 || e.which === 13) chat_input.style.height = (chat_input.value.split("\n").length * 1.5)+"rem";
 	}
-	prompt_sendStopgen.onclick = e => {
+	chat_sendStopgen.onclick = e => {
 		e.preventDefault();
 		if (stopGenerating){
 			stopGenerating.abort();
-			prompt_sendStopgen.innerText = "Send";
+			chat_sendStopgen.innerText = "Send";
 		} else {
 			sendChat();
 		}
-		prompt_input.focus();
 	}
 	prompt_reset.onclick = e => {
 		e.preventDefault();
 		resetChat();
+		chat_input.focus();
 	}
 	chat_box.scrollToBottom = debounce(chat_box.scrollToBottom,100);
 	loadOpts();
