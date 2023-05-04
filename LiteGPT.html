@@ -133,12 +133,13 @@ body {
 	margin:1rem 0px;
 	padding:.5rem;
 	border-radius:.4rem;
-	white-space:pre-wrap;
-	overflow-wrap:break-word;
+	overflow:scroll;
+	max-height:30rem
 }
 .chat-wrapper > .chats > .chat > pre > button {
 	position:absolute;
 	user-select:none;
+	touch-action:none;
 	display:block;
 	top:.2rem;
 	right:.2rem;
@@ -308,6 +309,7 @@ const sendChat = async (prompt) => {
 		const processStream = ({done,value}) => {
 			if (done || stopGenerating.signal.aborted){
 				if (lastData){
+					aiChat.innerHTML = formatText(lastData.text);
 					if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
 					if (!opts.simulateFetch && prompt !== 'hi') opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
 					storeOpts();
@@ -327,7 +329,7 @@ const sendChat = async (prompt) => {
 					continue
 				}
 				lastData = i;
-				aiChat.innerHTML = formatText(i.text); // put AI answer
+				aiChat.innerHTML = formatTextLight(i.text); // put AI answer
 				if (chat_box.scrollTop >= chat_box.scrollTopMax - 64) chat_box.scroll({top:chat_box.scrollHeight,left:0});
 			}
 			// Do something with each chunk of data
@@ -340,6 +342,10 @@ const sendChat = async (prompt) => {
 		chat_sendStopgen.innerText = "Send";
 		stopGenerating = null;
 	}
+}
+const clearChat = () => {
+	chat_box.innerHTML = "";
+	opts.currentChat = "";
 }
 const resetChat = () => {
 	if (!confirm("Are you sure to erase all chat histories?")) return;
@@ -356,6 +362,8 @@ const createChatBox = (text,isUser) => {
 }
 const loadChat = () => {
 	if (opts.currentChat !== ""){
+		stopGenChat();
+		stopGenerating = null;
 		chat_box.innerHTML = "";
 		for (let j of opts.chats[opts.currentChat].chat)
 			createChatBox(j.text,j.isUser);
@@ -372,17 +380,13 @@ const loadOpts = () => {
 const storeOpts = () => {
 	localStorage.setItem("baicgpt",JSON.stringify(opts))
 }
-const clearChat = () => {
-	chat_box.innerHTML = "";
-	opts.currentChat = "";
-}
 chat_box.scrollToBottom = () => {
 	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
 };
 
 // dependency
 const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
-const formatText = (text) => {
+const formatTextLight = (text) => {
   const htmlCharMap = {
     "&":"&amp;",
     "<":"&lt;",
@@ -391,8 +395,11 @@ const formatText = (text) => {
     '"':"&quot;"
   };
   return text.replace(/[\&\<\>\"\']/g,m => htmlCharMap[m])
-						 .replace(/```([\s\S]*?)```/g,"<pre><button onclick='navigator.clipboard.writeText(this.parentElement.textContent.trim())'></button>$1</pre>")
-						 .replace(/`([\s\S]*?)`/g,"<strong>$1</strong>");
+}
+const formatText = (text) => {
+  return formatTextLight(text).replace(/```([\s\S]*?)```/g,"<pre><button onclick='navigator.clipboard.writeText(this.parentElement.textContent.trim())'></button>$1</pre>")
+		.replace(/`([\s\S]*?)`/g,"<strong>$1</strong>")
+		.trim();
 }
 const sleep = m => new Promise(r=>setTimeout(r,m))
 const genAILikeResponse = str => {
@@ -427,8 +434,7 @@ const init = () => {
 	chat_sendStopgen.onclick = e => {
 		e.preventDefault();
 		if (stopGenerating){
-			stopGenerating.abort();
-			chat_sendStopgen.innerText = "Send";
+			stopGenChat();
 		} else {
 			sendChat();
 		}
