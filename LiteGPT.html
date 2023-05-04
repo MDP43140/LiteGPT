@@ -157,9 +157,84 @@ body {
 	color:#0000;
 	background-color:#fff;
 }
+.container {
+	display:flex;
+	height:100vh;
+	--panel-size:clamp(15rem,20%,30rem);
+
+	display:block;
+}
+.container > aside {
+	width:var(--panel-size);
+	background:#27272b;
+	position:relative;
+	border-radius:0 1rem 1rem 0;
+	transform:translateX(-100%);
+	transition:.3s ease-out;
+
+	position:absolute;
+	top:0%;
+	left:0%;
+	width:var(--panel-size);
+	height:100%;
+	z-index:1
+}
+.container > aside > .contents {
+	overflow:hidden scroll;
+	width:100%;
+	height:100%;
+	padding:4px;
+}
+.container > aside > .togglePane {
+	position:absolute;
+	top:50%;
+	right:-3.5rem;
+	width:2.5rem;
+	aspect-ratio:1 / 1;
+	transition:inherit;
+}
+.container > aside > .contents .chat-lists {
+	border-top:1px solid #fff7;
+	margin-top:4px;
+}
+.container > aside > .contents .card {
+	background:#fff2;
+	margin-top:4px;
+	border-radius:.4rem;
+	user-select:none;
+	display:flex;
+	min-height:1rem;
+	max-height:4rem;
+	overflow:hidden;
+}
+.container > aside > .contents .card > .title {
+	flex-grow:1;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	word-wrap:break-word;
+	margin:0px;
+	padding:8px;
+}
+.container > aside > .contents .card > .close {
+	margin:0px;
+	flex-grow:0;
+	flex-shrink:0;
+	color:#f00;
+}
+.container > aside > .contents .card > .close::after {
+	content:'×';
+}
+.container > .chat-wrapper {
+	flex:calc(100% - var(--panel-size));
+}
+.container.showPane > aside {transform:translateX(0%)}
+.container.showPane > aside > .togglePane {right:-1.5rem;}
+.container.showPane > .chat-wrapper {opacity:.6}
+.container.showPane > aside > .togglePane::after {content:'←'}
+.container > aside > .togglePane::after {content:'→'}
 @media (max-width:640px){
-	.container {padding:1vh}
-	.container > .chats:not(:empty){flex-grow:1}
+	.container > .chat-wrapper {padding:1vh}
+	.container > .chat-wrapper > .chats:not(:empty){flex-grow:1}
 }
 @media (max-height:400px){
 	.chat-wrapper > .title-container {display:none} /* temporary workaround for smol display, because the css :empty style didn't work */
@@ -168,18 +243,16 @@ body {
 </head>
 <body>
 <main class="container">
-	<div class="title-container" title="ChatGPT">
-		<h1 class="title">GPT Lite</h1>
-		<span class="desc">Lightweight ChatGPT web client, uses BAI Chat as backend</span>
-	</div>
-	<div class="chats">
-		<noscript class="chat error">GPT Lite requires JavaScript to work</noscript>
-	</div>
-	<form class="input_prompt wrapper">
-		<textarea id="prompt_input" placeholder="Ask something..."></textarea>
-		<button type="submit" id="prompt_sendStopgen">Send</button>
-		<button id="prompt_reset">Reset</button>
-	</form>
+	<aside>
+		<div class="contents">
+			<div class="card chat-new"><span class="title">New chat</span></div>
+			<div class="card chat-import"><label class="title">Import chat<input type="file" style="display:none"></label></div>
+			<a class="card chat-export" style="color:#fff;cursor:default;text-decoration:none"><span class="title">Export chat</span></a>
+			<div class="card chat-reset"><span class="title">Reset</span></div>
+			<div class="chat-lists"></div>
+		</div>
+		<button class="togglePane" onclick="this.parentElement.parentElement.classList.toggle('showPane')"></button>
+	</aside>
 	<main class="chat-wrapper">
 		<div class="title-container" title="ChatGPT">
 			<h1 class="title">GPT Lite</h1>
@@ -206,12 +279,21 @@ opts = {
 	chats:{}
 };
 const container = document.querySelector(".container");
+const pane_content = container.querySelector("aside > .contents");
 const chat_wrapper = container.querySelector(".chat-wrapper");
 const chat_box = chat_wrapper.querySelector(".chats");
-const prompt_wrapper = document.querySelector(".chat-wrapper > .input_prompt.wrapper");
+const chat_list = pane_content.querySelector("aside > .contents > .chat-lists");
 const chat_prompt = chat_wrapper.querySelector(".chat-prompt.wrapper");
 const chat_input = chat_prompt.querySelector("#chat_input");
 const chat_sendStopgen = chat_prompt.querySelector("#chat_sendStopgen");
+
+const chat_new = pane_content.querySelector(".chat-new");
+const chat_imp = pane_content.querySelector(".chat-import");
+const chat_exp = pane_content.querySelector(".chat-export");
+const chat_rst = pane_content.querySelector(".chat-reset");
+
+const chat_imp_input = chat_imp.querySelector("input");
+
 let stopGenerating;
 
 const askGPT = (() => {
@@ -293,6 +375,7 @@ const sendChat = async (prompt) => {
 			chat:[],
 			id:""
 		}
+		createNewChat(opts.currentChat);
 	};
 	if (!opts.simulateFetch && prompt !== 'hi'){
 		opts.chats[opts.currentChat].chat.push({text:prompt,isUser:true}); // also store it
@@ -343,6 +426,13 @@ const sendChat = async (prompt) => {
 		stopGenerating = null;
 	}
 }
+const stopGenChat = () => {
+	if (stopGenerating){
+		stopGenerating.abort();
+		setTimeout(()=>{stopGenerating=null},500); // temp workaround
+		chat_sendStopgen.innerText = "Send";
+	}
+}
 const clearChat = () => {
 	chat_box.innerHTML = "";
 	opts.currentChat = "";
@@ -350,6 +440,7 @@ const clearChat = () => {
 const resetChat = () => {
 	if (!confirm("Are you sure to erase all chat histories?")) return;
 	clearChat();
+	chat_list.innerHTML = "";
 	opts.chats = {};
 	storeOpts()
 }
@@ -375,10 +466,30 @@ const loadOpts = () => {
 		storedOpts = JSON.parse(storedOpts);
 		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
 		opts.chats = storedOpts.chats;
+		for (let i in opts.chats) createNewChat(i)
 	}
 }
 const storeOpts = () => {
 	localStorage.setItem("baicgpt",JSON.stringify(opts))
+}
+const createNewChat = (name) => {
+	const title = elt('span',{class:'title'},name);
+	const close = elt('button',{class:'close'});
+	const card = elt('div',{class:'card'},title,close);
+	title.onclick = () => {
+		opts.currentChat = name;
+		loadChat();
+		storeOpts();
+	}
+	close.onclick = () => {
+		if (!confirm(`Are you sure to remove "${name}"?`)) return;
+		card.remove();
+		chat_box.innerHTML = "";
+		delete opts.chats[opts.currentChat];
+		opts.currentChat = "";
+		storeOpts();
+	}
+	chat_list.append(card)
 }
 chat_box.scrollToBottom = () => {
 	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
@@ -438,13 +549,39 @@ const init = () => {
 		} else {
 			sendChat();
 		}
-	}
-	prompt_reset.onclick = e => {
-		e.preventDefault();
-		resetChat();
 		chat_input.focus();
 	}
 	chat_box.scrollToBottom = debounce(chat_box.scrollToBottom,100);
+
+	chat_new.onclick = clearChat;
+	chat_imp_input.onchange = () => {
+		let fr = new FileReader();
+		fr.readAsText(chat_imp_input.files[0]);
+		fr.addEventListener('load',()=>{
+			let newData;
+			chat_imp_input.value = '';
+			try {newData = JSON.parse(fr.result)}
+			catch(e){alert(e);return false}
+			if (!confirm("Are you sure to import the chat data? this will override current data, make sure you have a backup")) return;
+			opts = newData;
+			chat_box.innerHTML = "";
+			chat_list.innerHTML = "";
+			storeOpts();
+			loadOpts();
+			loadChat();
+		},{once:true});
+	}
+	chat_exp.onclick = () => {
+		URL.revokeObjectURL(chat_exp.href) // remove old blob
+		chat_exp.href = URL.createObjectURL(new Blob([JSON.stringify(opts)])); // generate new blob
+		chat_exp.download = `lgpt_${Date.now()}.json`; // filename
+		setTimeout(()=>{
+			URL.revokeObjectURL(chat_exp.href);
+			chat_exp.href = ''
+		},1e4) // 10s
+	}
+	chat_rst.onclick = resetChat;
+
 	loadOpts();
 	loadChat();
 	storeOpts();
