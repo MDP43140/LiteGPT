@@ -463,17 +463,7 @@ const loadChat = () => {
 const loadOpts = () => {
 	let storedOpts = localStorage.getItem("baicgpt");
 	if (storedOpts){
-		try {
-			storedOpts = JSON.parse(LZWcompressor.decompress(storedOpts,256));
-		} catch (e){
-			console.log("older format detected, any new saves will be compressed")
-			try {
-				storedOpts = JSON.parse(storedOpts,256);
-			} catch (e){
-				console.log(e)
-				return
-			}
-		}
+		storedOpts = JSON.parse(LZWcompressor.decompress(storedOpts,256));
 		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
 		opts.chats = storedOpts.chats;
 		for (let i in opts.chats) createNewChat(i)
@@ -597,10 +587,7 @@ const init = () => {
 			let newData;
 			chat_imp_input.value = '';
 			try {newData = JSON.parse(LZWcompressor.decompress(fr.result,256))}
-			catch(e){ // old format
-				try {newData = JSON.parse(fr.result)}
-				catch(e){alert(e);return false}
-			}
+			catch(e){alert(e);return false}
 			if (!confirm("Are you sure to import the chat data? this will override current data, make sure you have a backup")) return;
 			opts = newData;
 			chat_box.innerHTML = "";
