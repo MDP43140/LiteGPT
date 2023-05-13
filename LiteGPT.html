@@ -301,13 +301,14 @@ const askGPT = (() => {
 		method:"POST",
 		headers:{
 			"Host":"chatbot.theb.ai",
-			"Accept":"text/plain",
+			"Accept":"application/json, text/plain",
 			"Accept-Language":"en;q=0.5",
-			"Accept-Encoding":"identity",
+			"Accept-Encoding":"gzip, deflate, br, identity",
 			"Content-Type":"application/json",
 			"Origin":"https://chatbot.theb.ai",
 			"Referer":"https://chatbot.theb.ai",
 			"Cookie":"__cf_bm=yeetus321gooo",
+			"Connection":"keep-alive",
 		},
 	}
 //for testing purpose
@@ -393,7 +394,14 @@ const sendChat = async (prompt) => {
 			if (done || stopGenerating.signal.aborted){
 				if (lastData){
 					aiChat.innerHTML = formatText(lastData.text);
-					if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
+					if (lastData.id){ // if last data had id
+						if (opts.chats[opts.currentChat].id === ''){ // if id wasnt already set
+							opts.chats[opts.currentChat].id = lastData.id; // set id
+						} else if (opts.chats[opts.currentChat].id === lastData.id) { // if id is not equal
+							alert("Warning: Chat ID changes detected! local ID: "+opts.chats[opts.currentChat].id+", remote ID: "+lastData.id)
+							console.warn("[LiteGPT] Chat ID changes detected!",opts.chats[opts.currentChat].id,lastData.id)
+						}
+					}
 					if (!opts.simulateFetch && prompt !== 'hi') opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
 					storeOpts();
 				}
@@ -412,7 +420,7 @@ const sendChat = async (prompt) => {
 					continue
 				}
 				lastData = i;
-				aiChat.innerHTML = formatTextLight(i.text); // put AI answer
+				if (i.text) aiChat.innerHTML = formatTextLight(i.text); // put AI answer
 				if (chat_box.scrollTop >= chat_box.scrollTopMax - 64) chat_box.scroll({top:chat_box.scrollHeight,left:0});
 			}
 			// Do something with each chunk of data
@@ -460,13 +468,28 @@ const loadChat = () => {
 			createChatBox(j.text,j.isUser);
 	}
 }
+window.renameChat = (oldName,newName) => {
+	if (!oldName || !newName || opts.currentChat === newName) return;
+	opts.chats[newName] = Object.assign({},opts.chats[oldName]);
+	delete opts.chats[oldName];
+	if (opts.currentChat === oldName) opts.currentChat === newName;
+	storeOpts();
+}
 const loadOpts = () => {
 	let storedOpts = localStorage.getItem("baicgpt");
 	if (storedOpts){
-		storedOpts = JSON.parse(LZWcompressor.decompress(storedOpts,256));
-		if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
-		opts.chats = storedOpts.chats;
-		for (let i in opts.chats) createNewChat(i)
+		storedOpts = LZWcompressor.decompress(storedOpts,256);
+		try {
+			storedOpts = JSON.parse(storedOpts);
+		} catch (e){
+			window.BaiChatGptData = storedOpts;
+			alert("Chat data is corrupted, check console for more (including data recovery)")
+			console.error("The data is corrupted, the said data is referenced as string variable in window.BaiChatGptData")
+		} finally {
+			if (storedOpts.currentChat) opts.currentChat = storedOpts.currentChat;
+			opts.chats = storedOpts.chats;
+			for (let i in opts.chats) createNewChat(i)
+		}
 	}
 }
 const storeOpts = () => {
@@ -491,7 +514,13 @@ const createNewChat = (name) => {
 	}
 	chat_list.append(card)
 }
-const LZWcompressor = {
+chat_box.scrollToBottom = () => {
+	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
+};
+
+// dependency
+const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
+window.LZWcompressor = {
 	compress:(str,dictSize) => {
 		const dict = {};let i,l,c,w = "",wc,result = "";
 		for (i = 0;i < dictSize;i++) dict[String.fromCharCode(i)] = i;
@@ -517,12 +546,6 @@ const LZWcompressor = {
 		return result;
 	}
 };
-chat_box.scrollToBottom = () => {
-	chat_box.scroll({top:chat_box.scrollHeight,left:0,behavior:"smooth"});
-};
-
-// dependency
-const elt=(t,a,...h)=>{let d=document,e=d.createElement(t);for(t in a)e.setAttribute(t,a[t]);for(a of h)e.append(typeof a==="string"?d.createTextNode(a):a);return e}
 const formatTextLight = (text) => {
   const htmlCharMap = {
     "&":"&amp;",
