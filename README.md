@@ -8,16 +8,16 @@ Can be accessed from [here](https://mdp43140.github.io/GPTLite/LiteGPT.html)
 + Lightweight, Simple, Fast (no external libraries/frameworks needed).
 + Remembers previous context/history.
 + self-hostable, no installation required (because its written in Web languages, just open the file/site).
++ Multiple chats (although should be noted that its not quite stable yet, but for the most part it should work).
 
 ### Disadvantages:
-- Not as fast as tgpt (obviously its written in Web languages such as HTML,CSS,JS, and because of it, it/the browser uses lots of RAM).
-- Can't do multiple chats yet (backend code does "support" multiple chat, but its not ready yet, and there is no way to change it through GUI).
+- Not as fast as tgpt (obviously its written in Web languages such as HTML,CSS,JS, and the browser uses lots of RAM).
 
 ### Size comparison:
 + ChatGPT web client: 2.8mb
 + BAI Chat web client: 3.23mb
 + tgpt terminal client: 6.9mb (compiled binary for linux-amd64)
-+ tgpt terminal client: 6kb (source code)
++ tgpt terminal client: 6kb (source code, library and compiler not included)
 + GPT Lite web client: 20kb
 
 # Legal Notice
