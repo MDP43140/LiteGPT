@@ -394,14 +394,7 @@ const sendChat = async (prompt) => {
 			if (done || stopGenerating.signal.aborted){
 				if (lastData){
 					aiChat.innerHTML = formatText(lastData.text);
-					if (lastData.id){ // if last data had id
-						if (opts.chats[opts.currentChat].id === ''){ // if id wasnt already set
-							opts.chats[opts.currentChat].id = lastData.id; // set id
-						} else if (opts.chats[opts.currentChat].id === lastData.id) { // if id is not equal
-							alert("Warning: Chat ID changes detected! local ID: "+opts.chats[opts.currentChat].id+", remote ID: "+lastData.id)
-							console.warn("[LiteGPT] Chat ID changes detected!",opts.chats[opts.currentChat].id,lastData.id)
-						}
-					}
+					if (lastData.id) opts.chats[opts.currentChat].id = lastData.id; // set id
 					if (!opts.simulateFetch && prompt !== 'hi') opts.chats[opts.currentChat].chat.push({text:lastData.text,isUser:false}); // add response to history
 					storeOpts();
 				}
