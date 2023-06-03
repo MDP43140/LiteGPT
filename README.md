@@ -16,7 +16,7 @@ Can be accessed from [here](https://mdp43140.github.io/LiteGPT)
 ### Size comparison:
 + ChatGPT web client: 2.8mb
 + BAI Chat web client: 3.23mb
-+ tgpt terminal client: 6.9mb (compiled binary for linux-amd64)
++ tgpt terminal client: 7.51mb (compiled binary for linux-amd64)
 + tgpt terminal client: 6kb (source code, library and compiler not included)
 + GPT Lite web client: 20kb
 
