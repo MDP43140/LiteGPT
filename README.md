@@ -2,7 +2,7 @@
 LiteGPT is a simple & lightweight ChatGPT web client. It uses BAI Chat for the backend (no API key required)
 Inspired by [aandrew-me/tgpt](https://github.com/aandrew-me/tgpt)
 
-Can be accessed from [here](https://mdp43140.github.io/GPTLite/LiteGPT.html)
+Can be accessed from [here](https://mdp43140.github.io/LiteGPT)
 
 ### Features:
 + Lightweight, Simple, Fast (no external libraries/frameworks needed).
