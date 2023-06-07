@@ -575,14 +575,14 @@ const debounce = (fn,wait) => {
 	}
 }
 const init = () => {
-	chat_input.onkeypress = e => {
+	chat_input.oninput = e => {
 		if (e.which === 13 && e.shiftKey){
 			e.preventDefault();
 			sendChat();
 		}
-	}
-	chat_input.onkeyup = e => {
-		if (e.which === 8 || e.which === 13) chat_input.style.height = (chat_input.value.split("\n").length * 1.5)+"rem";
+		//"hack" from chatgpt to autoextend textarea height
+		chat_input.style.height = 'auto';
+		chat_input.style.height = `${chat_input.scrollHeight}px`;
 	}
 	chat_sendStopgen.onclick = e => {
 		e.preventDefault();
