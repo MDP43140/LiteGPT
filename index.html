@@ -602,8 +602,17 @@ const init = () => {
 		fr.addEventListener('load',()=>{
 			let newData;
 			chat_imp_input.value = '';
-			try {newData = JSON.parse(LZWcompressor.decompress(fr.result,256))}
-			catch(e){alert(e);return false}
+			newData = fr.result
+		//newData = LZWcompressor.decompress(newData,256)
+			try {
+				newData = JSON.parse(newData)
+			}
+			catch(e){
+				alert(e);
+				console.error("[LiteGPT.importData]",e);
+				window.BaiChatCorruptedData = fr.result
+				return false
+			}
 			if (!confirm("Are you sure to import the chat data? this will override current data, make sure you have a backup")) return;
 			opts = newData;
 			chat_box.innerHTML = "";
@@ -615,7 +624,9 @@ const init = () => {
 	}
 	chat_exp.onclick = () => {
 		URL.revokeObjectURL(chat_exp.href) // remove old blob
-		chat_exp.href = URL.createObjectURL(new Blob([LZWcompressor.compress(JSON.stringify(opts),256)])); // generate new blob
+		let data = JSON.stringify(opts);
+	//data = LZWcompressor.compress(data,256);
+		chat_exp.href = URL.createObjectURL(new Blob([data])); // generate new blob
 		chat_exp.download = `lgpt_${Date.now()}.json`; // filename
 		setTimeout(()=>{
 			URL.revokeObjectURL(chat_exp.href);
