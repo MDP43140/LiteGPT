@@ -12,6 +12,7 @@ Can be accessed from [here](https://mdp43140.github.io/LiteGPT)
 
 ### Disadvantages:
 - Not as fast as tgpt (obviously its written in Web languages such as HTML,CSS,JS, and the browser uses lots of RAM).
+- CORS sucks! (yeah you guess it, because its doing cross-origin requests, most browser block the request. but this can be fixed by saving the index.html file and opening it locally).
 
 ### Size comparison:
 + ChatGPT web client: 2.8mb
